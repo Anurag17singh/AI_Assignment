@@ -48,3 +48,6 @@ If Gemini detects that the retrieved context lacks relevant information, it is i
 > “I don’t have enough information in the uploaded documents.”  
 
 This ensures factual accuracy, prevents hallucination, and keeps all responses strictly based on user-provided documents.
+
+## This is the demo link to the deployed model [GPT Assistant](https://aiassignment-moqxrgmivs6osgizhstcpm.streamlit.app/)
+
