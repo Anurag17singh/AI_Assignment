@@ -1,6 +1,6 @@
-# 📘 Gemini 2.5 Flash RAG Assistant — Short README
+# GPT Assistant 
 
-## 🧠 Overview of Approach
+## Overview of Approach
 This project implements a **Retrieval-Augmented Generation (RAG)** system using **Gemini 2.5 Flash** for intelligent document-based question answering.  
 Users upload documents (PDF, DOCX, TXT, CSV), which are:
 1. **Parsed and preprocessed** to extract text using specialized loaders.  
@@ -26,7 +26,7 @@ If relevant context is missing, the system explicitly responds with:
 
 ---
 
-## 💬 Example Input & Output
+## Example Input & Output
 **Input:**  
 - Uploaded file: `Anurag_Singh_Resume.pdf`  
 - User query: “What programming languages does Anurag know?”
@@ -42,7 +42,7 @@ If relevant context is missing, the system explicitly responds with:
 
 ---
 
-## 🚧 Handling Out-of-Scope Queries
+##  Handling Out-of-Scope Queries
 The system uses a **custom prompt** within the LangChain RetrievalQA pipeline.  
 If Gemini detects that the retrieved context lacks relevant information, it is instructed to respond with:  
 > “I don’t have enough information in the uploaded documents.”  
