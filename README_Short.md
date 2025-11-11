@@ -13,7 +13,7 @@ If relevant context is missing, the system explicitly responds with:
 
 ---
 
-## 🧩 Libraries Used
+## Libraries Used
 | Purpose | Library |
 |----------|----------|
 | Front-end UI | Streamlit |
