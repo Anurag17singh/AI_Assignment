@@ -1,94 +1,135 @@
-# app.py
 import os
-from dotenv import load_dotenv
 import streamlit as st
-import google.generativeai as genai
-from model import process_uploaded_files, create_vectorstore, build_rag_chain
+from dotenv import load_dotenv
 
-
-
-# Environment Setup
-
-load_dotenv()  # Load .env file (contains GOOGLE_API_KEY)
-st.set_page_config(page_title="GPT Assistant (RAG-Style System", layout="wide")
-st.title("GPT Assistant (RAG-Style System")
-
-# Configure Gemini API Key
-if "GOOGLE_API_KEY" not in os.environ:
-    st.warning("GOOGLE_API_KEY not found in environment. Please set it in your .env file.")
-else:
-    genai.configure(api_key=os.getenv("GOOGLE_API_KEY"))
-
-
-
-# Sidebar: Document Upload
-st.sidebar.header("Upload Documents")
-uploaded_files = st.sidebar.file_uploader(
-    "Upload TXT, PDF, DOCX, or CSV files",
-    type=["txt", "pdf", "docx", "csv"],
-    accept_multiple_files=True,
+from model import (
+    process_uploaded_files,
+    create_vectorstore,
+    build_rag_chain
 )
 
-# Initialize session state
-if "vectorstore" not in st.session_state:
-    st.session_state.vectorstore = None
+# -----------------------------
+# App Configuration
+# -----------------------------
 
+st.set_page_config(
+    page_title="Document Q&A (RAG with Gemini)",
+    page_icon="📄",
+    layout="wide"
+)
 
+load_dotenv()
 
-# Cached Vectorstore Creation
+# -----------------------------
+# Sidebar
+# -----------------------------
 
-@st.cache_resource
+st.sidebar.title("📂 Upload Documents")
+uploaded_files = st.sidebar.file_uploader(
+    "Upload PDF, DOCX, CSV, or TXT files",
+    type=["pdf", "docx", "csv", "txt"],
+    accept_multiple_files=True
+)
+
+st.sidebar.markdown("---")
+st.sidebar.info(
+    "This app uses a Retrieval-Augmented Generation (RAG) pipeline "
+    "with Gemini and FAISS to answer questions from your documents."
+)
+
+# -----------------------------
+# Cached Resources
+# -----------------------------
+
+@st.cache_resource(show_spinner="Processing documents and building index...")
 def get_vectorstore(docs):
-    """Cache FAISS vectorstore to avoid recomputation."""
     return create_vectorstore(docs)
 
 
+@st.cache_resource(show_spinner="Initializing RAG chain...")
+def get_rag_chain(vectorstore):
+    return build_rag_chain(vectorstore)
+
+
+# -----------------------------
+# Main UI
+# -----------------------------
+
+st.title("📄 Document Question Answering (RAG)")
+st.write(
+    "Upload documents on the left, then ask questions based strictly on their content."
+)
+
+# -----------------------------
+# Document Processing
+# -----------------------------
+
 if uploaded_files:
-    with st.spinner("Processing uploaded files..."):
+    try:
         docs = process_uploaded_files(uploaded_files)
 
-        if len(docs) == 0:
-            st.sidebar.error("No text could be extracted. Try uploading another file.")
-        else:
-            st.sidebar.success(f"Processed {len(docs)} text chunks.")
-            vectorstore = get_vectorstore(docs)
-            st.session_state.vectorstore = vectorstore
-            st.sidebar.success("Vector store created and cached successfully.")
+        if not docs:
+            st.error("No readable text found in the uploaded documents.")
+            st.stop()
 
+        vectorstore = get_vectorstore(docs)
+        qa_chain = get_rag_chain(vectorstore)
 
+        st.success("Documents processed successfully! Ask your question below.")
 
-# Main Section – Query Interface
+        # Optional: Show extracted snippets
+        with st.expander("🔍 View extracted document snippets"):
+            for i, doc in enumerate(docs[:3], start=1):
+                st.text_area(
+                    label=f"Document Snippet {i}",
+                    value=doc.page_content[:500] + "...",
+                    height=150,
+                    label_visibility="collapsed"
+                )
 
-st.header("Ask a question")
-question = st.text_area("Enter your question related to the uploaded documents:", height=100)
-top_k = st.slider("Top K results for retrieval", 1, 10, 5)
+    except Exception as e:
+        st.error("An error occurred while processing documents.")
+        st.exception(e)
+        st.stop()
 
-if st.button("Get Answer"):
-    if not question.strip():
-        st.warning("Please enter a question first.")
-    elif st.session_state.vectorstore is None:
-        st.error("Please upload and process documents before asking questions.")
-    else:
-        with st.spinner("Querying..."):
-            qa_chain = build_rag_chain(st.session_state.vectorstore, k=top_k)
-            result = qa_chain.invoke({"query": question})
+else:
+    st.info("Please upload at least one document to begin.")
+    st.stop()
 
-        # Display answer
-        st.subheader("Answer")
-        st.write(result["result"])
+# -----------------------------
+# Question Answering
+# -----------------------------
 
-        # Display retrieved sources
-        st.subheader("Source Documents")
-        for i, doc in enumerate(result["source_documents"], start=1):
-            st.text_area(
-                label=f"Source {i}: Extracted Document Snippet",
-                value=doc.page_content[:500] + "...",
-                height=150,
-                label_visibility="collapsed"
-            )
+st.markdown("### ❓ Ask a Question")
 
+question = st.text_input(
+    "Enter your question:",
+    placeholder="e.g. What skills are mentioned in the resume?",
+    label_visibility="collapsed"
+)
 
-# Footer
+if question:
+    with st.spinner("Generating answer..."):
+        try:
+            result = qa_chain.invoke({"input": question})
 
-st.markdown("---")
-st.caption("Built withLangChain, Streamlit, and Gemini 2.5 Flash")
+            answer = result.get("answer", "")
+            context_docs = result.get("context", [])
+
+            st.markdown("### ✅ Answer")
+            st.write(answer)
+
+            if context_docs:
+                with st.expander("📌 Source Context"):
+                    for i, doc in enumerate(context_docs, start=1):
+                        st.markdown(f"**Source {i}:**")
+                        st.text_area(
+                            label=f"Context {i}",
+                            value=doc.page_content[:400] + "...",
+                            height=120,
+                            label_visibility="collapsed"
+                        )
+
+        except Exception as e:
+            st.error("An error occurred while generating the answer.")
+            st.exception(e)
