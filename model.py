@@ -1,7 +1,7 @@
 # model.py
 import os, io, tempfile, pickle
 from typing import List
-from langchain.text_splitter import RecursiveCharacterTextSplitter
+from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -154,3 +154,4 @@ def build_rag_chain(vectorstore, k: int = 5):
         return_source_documents=True,
         chain_type_kwargs={"prompt": prompt},
     )
+
